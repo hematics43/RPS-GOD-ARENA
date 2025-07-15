@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RPS GOD ARENA</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: radial-gradient(#222, #000);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1rem;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: gold;
+      text-shadow: 0 0 10px gold;
+    }
+    .input-area, .controls, .custom-names {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 0.5rem 0;
+      align-items: center;
+    }
+    input[type="number"], input[type="text"], input[type="color"], input[type="range"] {
+      padding: 0.4rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #888;
+    }
+    input[type="number"] {
+      width: 180px;
+      background: #222;
+      color: #fff;
+      text-align: center;
+    }
+    input[type="range"] {
+      width: 150px;
+    }
+    button {
+      padding: 0.4rem 1rem;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button:hover {
+      background: #555;
+    }
+    .arena {
+      position: relative;
+      width: 90vw;
+      height: 65vh;
+      background: #111;
+      border: 4px solid #fff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .item {
+      position: absolute;
+      font-size: 1.6rem;
+      font-weight: bold;
+      pointer-events: none;
+      user-select: none;
+      text-align: center;
+    }
+    .scoreboard {
+      display: flex;
+      gap: 1rem;
+      font-size: 1.1rem;
+      margin-top: 10px;
+    }
+    .score {
+      background: #222;
+      padding: 0.4rem 1rem;
+      border-radius: 8px;
+    }
+    .particle {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      animation: pop 0.6s linear forwards;
+    }
+    @keyframes pop {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+    #winner {
+      margin-top: 10px;
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: lightgreen;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔥 RPS GOD ARENA 🔥</h1>
+
+  <div class="custom-names">
+    <input type="text" id="rockName" placeholder="Rock name" value="Titan">
+    <input type="color" id="rockColor" value="#ff5555">
+
+    <input type="text" id="paperName" placeholder="Paper name" value="Scrollz">
+    <input type="color" id="paperColor" value="#55ff55">
+
+    <input type="text" id="scissorsName" placeholder="Scissors name" value="Bladez">
+    <input type="color" id="scissorsColor" value="#5599ff">
+
+    <button onclick="toggleNames()">Toggle Team Names</button>
+  </div>
+
+  <div class="input-area">
+    <input type="number" id="totalInput" placeholder="Enter total (×3)" />
+    <button onclick="startGame()">Start Game</button>
+  </div>
+
+  <div class="controls">
+    <button onclick="resetArena()">🔄 Reset</button>
+    <label>⚡ Speed:
+      <input type="range" id="speedSlider" min="0.1" max="3" step="0.1" value="1" oninput="updateSpeed()" />
+      <span id="speedValue">1.0×</span>
+    </label>
+  </div>
+
+  <div class="arena" id="arena"></div>
+
+  <div class="scoreboard">
+    <div class="score"><span id="rockLabel">🗿</span>: <span id="rockCount">0</span></div>
+    <div class="score"><span id="paperLabel">📜</span>: <span id="paperCount">0</span></div>
+    <div class="score"><span id="scissorsLabel">✂️</span>: <span id="scissorsCount">0</span></div>
+  </div>
+
+  <div id="winner"></div>
+
+  <script>
+    const arena = document.getElementById('arena');
+    const winnerDisplay = document.getElementById('winner');
+    const speedSlider = document.getElementById('speedSlider');
+    const speedValue = document.getElementById('speedValue');
+    const counts = { rock: 0, paper: 0, scissors: 0 };
+    const items = [];
+    let speedMultiplier = 1;
+    let showNames = true;
+
+    function toggleNames() {
+      showNames = !showNames;
+      resetArena();
+    }
+
+    function updateSpeed() {
+      speedMultiplier = parseFloat(speedSlider.value);
+      speedValue.textContent = speedMultiplier.toFixed(1) + "×";
+    }
+
+    function getCustomData() {
+      return {
+        rock: { name: rockName.value || "Rock", color: rockColor.value },
+        paper: { name: paperName.value || "Paper", color: paperColor.value },
+        scissors: { name: scissorsName.value || "Scissors", color: scissorsColor.value }
+      };
+    }
+
+    function startGame() {
+      const total = parseInt(document.getElementById("totalInput").value);
+      if (isNaN(total) || total <= 0 || total % 3 !== 0) {
+        alert("❌ Please enter a valid number that is a multiple of 3.");
+        return;
+      }
+      resetArena();
+      const each = total / 3;
+      addItems('rock', each);
+      addItems('paper', each);
+      addItems('scissors', each);
+    }
+
+    function addItems(type, number) {
+      const data = getCustomData();
+      for (let i = 0; i < number; i++) {
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.dataset.type = type;
+        const name = showNames ? `${data[type].name}<br>` : "";
+        el.innerHTML = `<div style='color:${data[type].color}'>${name}${getEmoji(type)}</div>`;
+        const size = 40;
+        el.style.left = Math.random() * (arena.clientWidth - size) + 'px';
+        el.style.top = Math.random() * (arena.clientHeight - size) + 'px';
+        arena.appendChild(el);
+
+        const obj = {
+          el,
+          type,
+          x: parseFloat(el.style.left),
+          y: parseFloat(el.style.top),
+          vx: (Math.random() - 0.5) * 1.2,
+          vy: (Math.random() - 0.5) * 1.2,
+          floatAngle: Math.random() * 360
+        };
+        items.push(obj);
+        counts[type]++;
+      }
+      updateScore();
+      winnerDisplay.textContent = "";
+    }
+
+    function getEmoji(type) {
+      return type === 'rock' ? "🗿" : type === 'paper' ? "📜" : "✂️";
+    }
+
+    function resetArena() {
+      arena.innerHTML = '';
+      items.length = 0;
+      counts.rock = counts.paper = counts.scissors = 0;
+      updateScore();
+      winnerDisplay.textContent = "";
+    }
+
+    function updateScore() {
+      document.getElementById('rockCount').textContent = counts.rock;
+      document.getElementById('paperCount').textContent = counts.paper;
+      document.getElementById('scissorsCount').textContent = counts.scissors;
+    }
+
+    function isWinner(a, b) {
+      return (
+        (a === 'rock' && b === 'scissors') ||
+        (a === 'scissors' && b === 'paper') ||
+        (a === 'paper' && b === 'rock')
+      );
+    }
+
+    function checkFinalWinner() {
+      const alive = Object.keys(counts).filter(k => counts[k] > 0);
+      if (alive.length === 1 && items.length > 0) {
+        const data = getCustomData();
+        const type = alive[0];
+        winnerDisplay.textContent = `🏆 ${getEmoji(type)} ${data[type].name.toUpperCase()} WINS THE ARENA!`;
+      }
+    }
+
+    function spawnParticles(x, y) {
+      for (let i = 0; i < 10; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = (x + Math.random() * 10 - 5) + 'px';
+        p.style.top = (y + Math.random() * 10 - 5) + 'px';
+        p.style.background = `hsl(${Math.random() * 360}, 100%, 60%)`;
+        arena.appendChild(p);
+        setTimeout(() => arena.removeChild(p), 600);
+      }
+    }
+
+    function animate() {
+      const size = 40;
+      for (let i = items.length - 1; i >= 0; i--) {
+        const a = items[i];
+        a.floatAngle += 0.05;
+        a.vx += 0.02 * Math.cos(a.floatAngle);
+        a.vy += 0.02 * Math.sin(a.floatAngle);
+
+        let target = null, minDist = Infinity;
+        for (const b of items) {
+          if (a !== b && a.type !== b.type) {
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = dx * dx + dy * dy;
+            if (dist < minDist) {
+              minDist = dist;
+              target = b;
+            }
+          }
+        }
+
+        if (target) {
+          const dx = target.x - a.x;
+          const dy = target.y - a.y;
+          const mag = Math.sqrt(dx * dx + dy * dy);
+          if (mag > 0) {
+            a.vx += 0.03 * (dx / mag) * speedMultiplier;
+            a.vy += 0.03 * (dy / mag) * speedMultiplier;
+          }
+        }
+
+        a.x += a.vx * speedMultiplier;
+        a.y += a.vy * speedMultiplier;
+
+        if (a.x <= 0 || a.x >= arena.clientWidth - size) a.vx *= -1;
+        if (a.y <= 0 || a.y >= arena.clientHeight - size) a.vy *= -1;
+
+        a.el.style.left = a.x + 'px';
+        a.el.style.top = a.y + 'px';
+
+        for (let j = i - 1; j >= 0; j--) {
+          const b = items[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < size && a.type !== b.type) {
+            const winner = isWinner(a.type, b.type) ? a : b;
+            const loser = winner === a ? b : a;
+            counts[loser.type]--;
+            spawnParticles(loser.x + 10, loser.y + 10);
+            arena.removeChild(loser.el);
+            items.splice(items.indexOf(loser), 1);
+            updateScore();
+            checkFinalWinner();
+            break;
+          }
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    updateSpeed();
+    animate();
+  </script>
+</body>
+</html>
